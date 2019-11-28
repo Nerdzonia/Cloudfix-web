@@ -1,7 +1,8 @@
 import axios from 'axios';
 import cookie from 'react-cookies';
 
-const baseURL = process.env.URL || 'localhost:3000';
+const baseURL = process.env.URL || 'https://cloudfix-api.herokuapp.com';
+console.log(process.env.URL)
 
 const axiosRequest = axios.create({
     baseURL,
