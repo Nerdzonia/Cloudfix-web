@@ -12,11 +12,7 @@ class MyApp extends App {
         }
         return { pageProps }
     }
-    componentDidMount(){
-        window.onbeforeprint = () => {
-            sessionStorage.clear();
-        }
-    }
+
     render() {
 
         const { Component, pageProps } = this.props;
