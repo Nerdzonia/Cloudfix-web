@@ -8,9 +8,6 @@ import PageLayout from '../components/layout/page';
 import apiRequestor from "../services/resources/ticket";
 import TicketList from "../components/ticket/ticketList/ticketList";
 
-import 'react-date-range/dist/theme/default.css';
-import 'react-date-range/dist/styles.css';
-
 class Index extends React.Component {
     constructor(props) {
         super(props);
