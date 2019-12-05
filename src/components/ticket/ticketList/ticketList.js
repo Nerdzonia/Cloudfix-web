@@ -13,7 +13,8 @@ import {
   Button,
   Input,
   Breadcrumb,
-  Header
+  Header,
+  Pagination
 } from "semantic-ui-react";
 import { DateRange } from 'react-date-range';
 import * as rdrLocales from "react-date-range/dist/locale";
@@ -22,7 +23,7 @@ import ticketRequestor from '../../../services/resources/ticket';
 
 moment.locale('pt-BR')
 import SystemSelect from '../../utils/SystemSelect';
-import ticket from "../../../services/resources/ticket";
+// import ticket from "../../../services/resources/ticket";
 
 const statusSearch = [
   {
@@ -33,12 +34,7 @@ const statusSearch = [
   {
     key: "respondido",
     text: "Respondido",
-    value: "answered"
-  },
-  {
-    key: "atrasado",
-    text: "Atrasado",
-    value: "late"
+    value: "solved"
   },
   {
     key: "fechado",
@@ -46,29 +42,7 @@ const statusSearch = [
     value: "closed"
   }
 ];
-
-const Row = (id, status, system, title, updatedAt, index) => (
-  <Table.Row key={`${title}-${index}`}>
-    <Table.Cell>{status}</Table.Cell>
-    <Table.Cell>{system}</Table.Cell>
-    <Table.Cell>{title}</Table.Cell>
-    <Table.Cell>{moment(updatedAt).fromNow()}</Table.Cell>
-    <Table.Cell>
-
-      <Button.Group>
-        <Button basic icon='check circle' color='green' />
-        <Button basic icon='external square alternate' color='blue' onClick={() => Router.push({
-          pathname: '/myTicket',
-          query: { id: id },
-        })} />
-        <Button icon='stop circle' color='red' />
-      </Button.Group>
-    </Table.Cell>
-  </Table.Row>
-);
-
 const TicketList = (props) => {
-
   const {
     ticketList
   } = props;
@@ -81,26 +55,54 @@ const TicketList = (props) => {
     direction: null,
   });
 
-  const handleSort = (clickedColumn) => () => {
-    const { column, data, direction } = sort;
+  const [query, setQuery] = useState({});
+  const [paginateTicket, setPaginateTicket] = useState({});
+  const [paginateInfo, setPaginateInfo] = useState(ticketList);
+  const [inputs, setInputs] = useState({});
+
+  const handleSort = async (clickedColumn) => {
+    const { column, direction } = sort;
+    let paginateRule = {};
 
     if (column !== clickedColumn) {
-      setSort({
-        column: clickedColumn,
-        data: lodash.sortBy(data, [clickedColumn]),
-        direction: 'ascending',
+      paginateRule = {
+        pagination: { ...paginateTicket, sort: 'asc', column: clickedColumn }
+      }
+      await ticketRequestor.getAllTickets({ ...paginateRule, query }).then(ticket => {
+        setSort({
+          column: clickedColumn,
+          data: ticket.data.docs || [],
+          direction: 'ascending',
+        });
       });
-
+      setPaginateTicket({
+        ...paginateTicket,
+        ...paginateRule.pagination
+      });
       return
     }
 
-    setSort({
-      ...sort,
-      data: data.reverse(),
-      direction: direction === 'ascending' ? 'descending' : 'ascending',
+    paginateRule = {
+      pagination: {
+        ...paginateTicket,
+        sort: paginateTicket.sort === 'asc' ? 'desc' : 'asc',
+        column: clickedColumn
+      }
+    }
+
+    setPaginateTicket({
+      ...paginateTicket,
+      ...paginateRule.pagination
+    });
+
+    await ticketRequestor.getAllTickets({ ...paginateRule, query }).then(ticket => {
+      setSort({
+        ...sort,
+        data: ticket.data.docs || [],
+        direction: direction === 'ascending' ? 'descending' : 'ascending',
+      });
     });
   }
-  const { column, direction, data } = sort;
 
   const [selectionRange, setSelectionRange] = useState({
     startDate: new Date(),
@@ -113,45 +115,97 @@ const TicketList = (props) => {
       ...selectionRange,
       ...date.selection
     })
+    setInputs({
+      ...inputs,
+      startAt: new Date(date.selection.startDate).toISOString(),
+      endsAt: new Date(date.selection.endDate).toISOString()
+    })
   }
 
-  const [ticketPaginate, setTicketPaginate] = useState(ticketList);
+  const paginate = async (info) => {
+    let pagination = {
+      ...paginateTicket,
+      page: info.activePage,
+    }
+    setPaginateTicket({
+      ...paginateTicket,
+      ...pagination
+    });
 
-  const paginate = async (page) => {
-    await ticketRequestor.getAllTickets(page).then(ticket => {
-      setTicketPaginate({
-        ...ticket.data
-      });
-      setSort({
-        ...sort,
-        data: ticket.data.docs
-      });
+    await ticketRequestor.getAllTickets({ pagination, query }).then(ticket => {
+      if (ticket.data) {
+        setSort({
+          ...sort,
+          data: ticket.data.docs
+        });
+        setPaginateInfo({
+          ...ticket.data
+        });
+      } else {
+        console.error(ticket.error)
+      }
     });
   }
 
-  const paginationButtons = () => {
-
-    const buttons = [];
-    buttons.push(
-      <Menu.Item as="a" icon onClick={() => ticketPaginate.prevPage ? paginate(ticketPaginate.prevPage) : null }>
-        <Icon name="chevron left" />
-      </Menu.Item>
-    );
-
-    for (let i = 1; ticketPaginate.totalPages >= i; i++) {
-      buttons.push(
-        <Menu.Item as="a" active={i === ticketPaginate.page} onClick={() => paginate(i)}>{i}</Menu.Item>)
-    }
-
-    buttons.push(
-      <Menu.Item as="a" icon onClick={() => ticketPaginate.nextPage ? paginate(ticketPaginate.nextPage) : null}>
-        <Icon name="chevron right" />
-      </Menu.Item>
-    );
-
-    return buttons
+  const handleInputs = ({ name, value }, e) => {
+    setInputs({ ...inputs, [name]: value });
   }
 
+  const handleSendQuery = async () => {
+    let newQuery = {};
+    Object.keys(inputs).map(e => inputs[e] !== "" ? newQuery[e] = inputs[e] : null);
+    setQuery({ ...newQuery })
+    await ticketRequestor.getAllTickets({ query: { ...newQuery } }).then(ticket => {
+      setSort({
+        column: null,
+        data: ticket.data.docs || [],
+        direction: null,
+      });
+      setPaginateInfo(ticket.data);
+    })
+  }
+
+  const handleClenInputs = () => {
+    let fields = {}
+    Object.keys(inputs).map(e => fields[e] = "");
+    setSelectionRange({
+      startDate: new Date(),
+      endDate: new Date(),
+      key: 'selection',
+    })
+    setInputs({ ...fields })
+  }
+
+  const updateTicketStatus = async (id, status) => {
+    await ticketRequestor.updateStatus(id, status);
+    await ticketRequestor.getAllTickets({ pagination: {...paginateTicket}, query}).then(ticket => {
+      setSort({
+        ...sort,
+        data: ticket.data.docs || []
+      })
+    });
+  }
+
+  const Row = (id, status, system, title, updatedAt, index) => (
+    <Table.Row key={`${title}-${index}`} positive={status === 'solved'} negative={status === 'closed'} >
+      <Table.Cell>{status === "open" ? "Aberto" : status === "solved" ? "Resolvido" : status === "closed" ? "Fechado" : null}</Table.Cell>
+      <Table.Cell>{system}</Table.Cell>
+      <Table.Cell>{title}</Table.Cell>
+      <Table.Cell>{moment(updatedAt).fromNow()}</Table.Cell>
+      <Table.Cell>
+        <Button.Group>
+          <Button basic icon='check circle' color='green' onClick={() => updateTicketStatus(id, 'solved')} disabled={status === 'solved'} /> 
+          <Button basic icon='external square alternate' color='blue' onClick={() => Router.push({
+            pathname: '/myTicket',
+            query: { id: id },
+          })} />
+          <Button icon='stop circle' color='red' onClick={() => updateTicketStatus(id, 'closed')} disabled={status ==='closed'} />
+        </Button.Group>
+      </Table.Cell>
+    </Table.Row>
+  );
+
+  const { column, direction, data } = sort
   return (
     <Grid container centered columns={1}>
       <Grid.Column mobile={16} tablet={10} computer={16}>
@@ -179,20 +233,29 @@ const TicketList = (props) => {
                 <Segment>
                   <Menu secondary>
                     <Menu.Menu position="left">
-                      <Menu.Item>
-                        <Input icon='search' placeholder='Buscar campo...' />
-                      </Menu.Item>
+
                       <Menu.Item>
                         <Button compact icon labelPosition='right' onClick={() => setActive(!isActive)}>
                           Busca Avançada
                           <Icon name='search' />
                         </Button>
                       </Menu.Item>
-                      <Menu.Item>
-                        <Form>
-                          <Form.Select options={statusSearch} inline label='Marcar como:' placeholder='Aberto' />
-                        </Form>
-                      </Menu.Item>
+                      {isActive
+                        ? <>
+                          <Menu.Item>
+                            <Button compact color="green" icon labelPosition='right' onClick={handleSendQuery}>
+                              Buscar
+                          <Icon name='search plus' />
+                            </Button>
+                          </Menu.Item>
+                          <Menu.Item>
+                            <Button compact color="red" icon labelPosition='right' onClick={handleClenInputs}>
+                              Limpar
+                          <Icon name='eraser' />
+                            </Button>
+                          </Menu.Item>
+                        </>
+                        : null}
                     </Menu.Menu>
                   </Menu>
                 </Segment>
@@ -202,25 +265,15 @@ const TicketList = (props) => {
                   ? <Segment>
                     <Form>
                       <Form.Group widths='equal'>
-                        <Form.Select options={statusSearch} fluid label='Status:' placeholder='Aberto' />
-
-                        {/*trazer select com nome de clientes */}
-                        <Form.Input fluid label='Cliente:' placeholder='Evillyn' />
-
-                        {/*systemselect*/}
-                        <SystemSelect
-                          placeholder="selecione o sistema"
-                          label="Sistema:"
-                        />
-
+                        <Form.Select options={statusSearch} name="status" fluid label='Status:' onChange={(e, d) => handleInputs(d)} value={inputs.status || ''} placeholder='Aberto' />
+                        <Form.Input fluid label='Cliente:' value={inputs.name || ''} name="name" placeholder='Evillyn' onChange={(e, d) => handleInputs(d)} />
+                        <SystemSelect placeholder="selecione o sistema" value={inputs.system || ''} label="Sistema:" name="system" onChange={(e, d) => handleInputs(d)} />
                       </Form.Group>
                       <Form.Group widths="equal">
                         <DateRange
                           locale={rdrLocales.pt}
-
                           ranges={[selectionRange]}
                           onChange={handleSelect}
-
                         />
                       </Form.Group>
                     </Form>
@@ -236,9 +289,9 @@ const TicketList = (props) => {
                           <Table.HeaderCell>STATUS</Table.HeaderCell>
                           <Table.HeaderCell>SISTEMA</Table.HeaderCell>
                           <Table.HeaderCell sorted={column === 'title' ? direction : null}
-                            onClick={handleSort('title')}>TÍTULO</Table.HeaderCell>
+                            onClick={() => handleSort('title')}>TÍTULO</Table.HeaderCell>
                           <Table.HeaderCell sorted={column === 'updatedAt' ? direction : null}
-                            onClick={handleSort('updatedAt')}>ULTIMA VEZ MODIFICADO</Table.HeaderCell>
+                            onClick={() => handleSort('updatedAt')}>ULTIMA VEZ MODIFICADO</Table.HeaderCell>
                           <Table.HeaderCell>OPÇÕES</Table.HeaderCell>
                         </Table.Row>
                       </Table.Header>
@@ -251,19 +304,18 @@ const TicketList = (props) => {
                         <Table.Row>
                           <Table.HeaderCell />
                           <Table.HeaderCell colSpan='4'>
-
-                            {/* <Grid.Row>
-                              <Message attached='bottom'>Mostrando 1 - 2 resultados de 2.</Message>
-                            </Grid.Row> */}
-
                             <Divider hidden />
-
                             <Grid.Row>
 
-                              {/* QUANDO ALGUM TICKET FOR SELECIONADO CheckedTicketsOptions DEVE SER MOSTRADO*/}
-
-                              <Menu floated="right" pagination>
-                                {paginationButtons()}
+                              <Menu floated="right">
+                                <Pagination
+                                  defaultActivePage={1}
+                                  firstItem={null}
+                                  lastItem={null}
+                                  siblingRange={1}
+                                  totalPages={paginateInfo.totalPages}
+                                  onPageChange={(mouseEvent, data) => paginate(data)}
+                                />
                               </Menu>
 
                             </Grid.Row>
