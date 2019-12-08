@@ -15,19 +15,20 @@ import TicketRequestor from '../../../services/resources/ticket';
 import SystemSelect from '../../utils/SystemSelect';
 
 const TicketForm = props => {
-  
+
   const ImageUpload = React.createRef();
 
   const [load, setLoad] = useState(false);
 
-  const [input, setInput] = useState({
+  const inputInitialState = {
     email: '',
     name: '',
     title: '',
     system: '',
     image: [],
     message: ''
-  });
+  }
+  const [input, setInput] = useState(inputInitialState);
 
   const [image, setImage] = useState(null);
 
@@ -42,6 +43,9 @@ const TicketForm = props => {
   const [alert, setAlert] = useState(null);
 
   const handleFildsChange = (e, { name, value }) => {
+    let check = { [name]: value };
+    if (check[name])
+      setCheckInput({ ...checkInput, [name]: false });
     setInput({ ...input, [name]: value });
   }
 
@@ -51,11 +55,11 @@ const TicketForm = props => {
 
       if (file.size >= 2097152)
         return setAlert(<Alert buttonColor="red" iconTitle="warning" iconButton="checkmark"
-        message={'Porfavor insira um arquivo menor que 2MB'} open={true} title="Aviso" removeAlert={setAlert} />);
+          message={'Porfavor insira um arquivo menor que 2MB'} open={true} title="Aviso" removeAlert={setAlert} />);
 
       if (input.image.length >= 5)
         return setAlert(<Alert buttonColor="red" iconTitle="warning" iconButton="checkmark"
-        message={'So pode carregar em ate arquivos.'} open={true} title="Aviso" removeAlert={setAlert} />);
+          message={'So pode carregar em ate arquivos.'} open={true} title="Aviso" removeAlert={setAlert} />);
 
       setInput({ ...input, image: input.image ? [file, ...input.image] : [file] });
 
@@ -86,7 +90,7 @@ const TicketForm = props => {
 
     if (validateInputs) {
       setLoad(true);
-      
+
       let data = await TicketRequestor.sendTicket(input);
 
       if (!data.error) {
@@ -236,9 +240,9 @@ const TicketForm = props => {
                     </Form.Group>
                   </Grid.Column>
                   <Grid.Column>
-                    {image ? <ArchiveBox /> : null}
+                    {input.image.length !== 0 ? <ArchiveBox /> : null}
                     <Button.Group floated="right">
-                      <Button>Cancelar</Button>
+                      <Button onClick={() => setInput(inputInitialState)}>Cancelar</Button>
                       <Button.Or text="ou" />
                       <Button
                         positive

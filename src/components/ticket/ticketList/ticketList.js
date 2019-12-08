@@ -131,7 +131,7 @@ const TicketList = (props) => {
         console.error(ticket.error)
       }
     });
-  } 
+  }
 
   const handleInputs = ({ name, value }, e) => {
     setInputs({ ...inputs, [name]: value });
@@ -164,7 +164,7 @@ const TicketList = (props) => {
 
   const updateTicketStatus = async (id, status) => {
     await ticketRequestor.updateStatus(id, status);
-    await ticketRequestor.getAllTickets({ pagination: {...paginateTicket}, query}).then(ticket => {
+    await ticketRequestor.getAllTickets({ pagination: { ...paginateTicket }, query }).then(ticket => {
       setSort({
         ...sort,
         data: ticket.data.docs || []
@@ -180,12 +180,12 @@ const TicketList = (props) => {
       <Table.Cell>{moment(updatedAt).fromNow()}</Table.Cell>
       <Table.Cell>
         <Button.Group>
-          <Button basic icon='check circle' color='green' onClick={() => updateTicketStatus(id, 'solved')} disabled={status === 'solved'} /> 
+          <Button basic icon='check circle' color='green' onClick={() => updateTicketStatus(id, 'solved')} disabled={status === 'solved'} />
           <Button basic icon='external square alternate' color='blue' onClick={() => Router.push({
             pathname: '/myTicket',
             query: { id: id },
           })} />
-          <Button icon='stop circle' color='red' onClick={() => updateTicketStatus(id, 'closed')} disabled={status ==='closed'} />
+          <Button icon='stop circle' color='red' onClick={() => updateTicketStatus(id, 'closed')} disabled={status === 'closed' || status === 'solved'} />
         </Button.Group>
       </Table.Cell>
     </Table.Row>
