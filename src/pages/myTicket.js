@@ -18,8 +18,9 @@ const MyTicket = (props) => {
             (async () => {
                 let data = await TicketRequestor.getTicket(id);
     
-                if (!data.error)
+                if (!data.error){
                     setTicket(data.data);
+                }
                 else{
                     setAlert(<Alert buttonColor='red' iconButton='checkmark' iconTitle='warning' message={`${data.error}. Redirecionando para home em 5 segundos.`} open={true} title='Erro'  removeAlert={setAlert} />)
                     setTimeout(() => Router.push('/'), 5000);
