@@ -22,7 +22,7 @@ const HeaderC = props => {
         <Grid.Row>
           <Header as="h5">
             <div style={{ marginRight: 5, display: 'inline-block' }}>
-             <Image size='mini' src={`${adminIcon}`} />
+              <Image size='mini' src={`${adminIcon}`} />
             </div>
             <Dropdown item text='Admin' >
               <Dropdown.Menu>
