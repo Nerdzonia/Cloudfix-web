@@ -22,7 +22,7 @@
     "lodash": "^4.17.15",
     "mini-css-extract-plugin": "^0.7.0",
     "moment": "^2.24.0",
-    "next": "^9.0.1",
+    "next": "^9.3.2",
     "next-compose-plugins": "^2.2.0",
     "next-images": "^1.1.2",
     "node-sass": "^4.12.0",
